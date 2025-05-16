@@ -1,0 +1,73 @@
+import os
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import matplotlib.ticker as ticker
+import numpy as np
+
+mpl.rcParams['font.family'] = 'Times New Roman'
+mpl.rcParams['font.size'] = 12
+mpl.rcParams['font.weight'] = 'bold'
+mpl.rcParams['lines.linewidth'] = 1.5
+
+# Set your base directory
+base_dir = 'Add'
+algorithms = ['Clique', 'IBFT', 'QBFT']
+node_counts = [ '5 Nodes','10 Nodes','15 Nodes', '20 Nodes', '25 Nodes']
+transaction_count = '4000'
+
+# Dictionary to hold throughput data
+throughput_data = {algo: [] for algo in algorithms}
+
+# Extract throughput for 1000 transactions
+
+scaling_factor = 1e5
+for algo in algorithms:
+    for node in node_counts:
+        folder_path = os.path.join(base_dir, node, algo)
+        if not os.path.exists(folder_path):
+            throughput_data[algo].append(None)
+            continue
+
+        throughput = None
+        for file in os.listdir(folder_path):
+            if file.endswith('.csv') and transaction_count in file:
+                df = pd.read_csv(os.path.join(folder_path, file))
+                throughput = df['Throughput(TPS)'].max()
+                break
+
+        throughput_data[algo].append(throughput)
+
+# Plotting
+def power_formatter(x, pos):
+    if x is None or np.isnan(x) or x == 0:
+        return "0"
+    exponent = int(np.floor(np.log10(abs(x))))
+    coefficient = x / (10 ** exponent)
+    return f'{coefficient:.1f}×10^{exponent}'
+
+plt.figure(figsize=(5, 4))
+for algo in algorithms:
+    x_vals = [int(n.replace('Nodes', '')) for n in node_counts]
+    y_vals = [y / scaling_factor if y is not None else None for y in throughput_data[algo]]
+    plt.plot(x_vals,y_vals,
+             marker='o',linestyle='--', label=algo)
+
+plt.title(f'Max Throughput vs Number of Nodes for {transaction_count} Transactions',fontsize=12,fontweight='bold')
+plt.xlabel('Number of Nodes',fontsize=12,fontweight='bold')
+plt.ylabel('Max Throughput (×10⁵ TPS)',fontsize=12,fontweight='bold')
+
+#plt.gca().yaxis.set_major_formatter(ticker.FuncFormatter(power_formatter))
+plt.legend(
+    title='Algorithms',
+    loc='best',
+    fontsize=10,
+    title_fontsize=10,
+    frameon=True,
+    # borderpad=1.0
+)
+plt.grid(True,linestyle='--')
+plt.xlim(4, 26)
+plt.xticks(range(5, 26, 5))  
+plt.tight_layout()
+plt.show()
